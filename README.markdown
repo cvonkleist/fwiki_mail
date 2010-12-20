@@ -1,3 +1,7 @@
+The FwikiMail module lets you e-mail stuff to your fwiki wiki. If you're like
+me and you keep your entire life (notes, to-do lists, projects, goals, etc.) in
+a fwiki wiki, this is 1,000% awesome.
+
 ## How to make edits
 
 ### Create or replace a page
