@@ -136,7 +136,7 @@ if $0 == __FILE__
   runner.run!
   puts runner.report
   if report_email_address
-    IO.popen('echo ' + report_email_address, 'w') do |mail|
+    IO.popen('mail ' + report_email_address, 'w') do |mail|
       mail.write runner.report
     end
   end
