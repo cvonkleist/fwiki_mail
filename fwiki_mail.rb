@@ -59,6 +59,10 @@ module FwikiMail
     def inspect
       '#<Edit: operation = %s / title = %s / body = %s>' % [operation.inspect, title.inspect, body.inspect]
     end
+
+    def to_s
+      @segment
+    end
   end
 
   class Processor
@@ -68,28 +72,36 @@ module FwikiMail
 
     def run
       edits.collect do |edit|
-        process edit
+        begin
+          process edit
+        rescue Exception => e
+          EditResponse.new(:failure, "got error %s while processing this edit:\n%s" % [e.inspect, edit])
+        end
       end
     end
 
     def process(edit)
-      case edit.operation
-      when :replace
-        @connection.write edit.title, edit.body 
-        EditResponse.new(:success, 'created/replaced "%s"' % edit.title)
-      when :append
-        @connection.write edit.title, @connection.read(edit.title) + "\n" + edit.body
-        EditResponse.new(:success, 'appended to "%s"' % edit.title)
-      when :prepend
-        @connection.write edit.title, edit.body + "\n" + @connection.read(edit.title)
-        EditResponse.new(:success, 'prepended to "%s"' % edit.title)
-      when :insert_alpha
-        lines = @connection.read(edit.title).split("\n", -1)
-        insert_before = lines.find { |l| (l <=> edit.body) == 1 }
-        lines.insert lines.index(insert_before), edit.body
-        @connection.write edit.title, lines.join("\n")
-        EditResponse.new(:success, 'alphabetically inserted into "%s"' % edit.title)
-      end
+      body = @connection.read(edit.title) rescue nil
+
+      new_body, verb =
+        if edit.operation == :replace || body.nil?
+          [edit.body, body.nil? ? 'created' : 'replaced']
+        else
+          case edit.operation
+          when :append
+            [body + "\n" + edit.body, 'appended to']
+          when :prepend
+            [edit.body + "\n" + body, 'prepended to']
+          when :insert_alpha
+            lines = body.split("\n", -1)
+            insert_before = lines.find { |l| (l <=> edit.body) == 1 }
+            lines.insert lines.index(insert_before), edit.body
+            [lines.join("\n"), 'alphabetically inserted into']
+          end
+        end
+
+      @connection.write(edit.title, new_body)
+      EditResponse.new(:success, '%s "%s"' % [verb, edit.title])
     end
 
     private

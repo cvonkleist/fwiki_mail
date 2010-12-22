@@ -87,6 +87,12 @@ describe Edit do
       e.body.should == body
     end
   end
+
+  it 'should be representable as a string' do
+    segment = ">foo\nfoofoo\n"
+    e = Edit.new(segment)
+    e.to_s.should == segment
+  end
 end
 
 describe Processor do
@@ -113,12 +119,33 @@ describe Processor do
     @connection = mock 'connection'
   end
 
-  it 'should process edits: replace' do
+  it 'should process edits: replace (page exists)' do
     @edit.stub!(:operation).and_return :replace
+    @connection.should_receive(:read).with('foo').and_return('existing content')
     @connection.should_receive(:write).with('foo', 'foo body')
 
     p = Processor.new(nil, @connection)
-    p.process(@edit).to_s.should == 'success: created/replaced "foo"'
+    p.process(@edit).to_s.should == 'success: replaced "foo"'
+  end
+
+  it 'should process edits: replace (page is new)' do
+    @edit.stub!(:operation).and_return :replace
+    @connection.should_receive(:read).with('foo').and_raise Errno::ENOENT
+    @connection.should_receive(:write).with('foo', 'foo body')
+
+    p = Processor.new(nil, @connection)
+    p.process(@edit).to_s.should == 'success: created "foo"'
+  end
+
+  # this also stands as a spec for the same condition with :prepend and
+  # :insert_alpha
+  it 'should process edits: replace (asked for append on nonexistent page)' do
+    @edit.stub!(:operation).and_return :append
+    @connection.should_receive(:read).with('foo').and_raise Errno::ENOENT
+    @connection.should_receive(:write).with('foo', "foo body")
+
+    p = Processor.new(nil, @connection)
+    p.process(@edit).to_s.should == 'success: created "foo"'
   end
 
   it 'should process edits: append' do
@@ -146,6 +173,13 @@ describe Processor do
 
     p = Processor.new(nil, @connection)
     p.process(@edit).to_s.should == 'success: alphabetically inserted into "foo"'
+  end
+
+  it 'should give a good message on error when processing edits' do
+    p = Processor.new(nil, @connection)
+    p.should_receive(:edits).and_return [Edit.new(">foo\nbar\n")]
+    p.should_receive(:process).and_raise Exception.new('suckage')
+    p.run.first.to_s.should == "failure: got error #<Exception: suckage> while processing this edit:\n>foo\nbar\n"
   end
 end
 
