@@ -126,13 +126,18 @@ module FwikiMail
 end
 
 if $0 == __FILE__
-  if ARGV.length != 4
+  if ARGV.length < 4
     puts 'usage: %s host port username password < email.txt' % File.basename($0)
     exit 1
   end
-  host, port, username, password = ARGV
+  host, port, username, password, report_email_address = ARGV
   email = STDIN.read
   runner = FwikiMail::Runner.new(host, port, username, password, email)
   runner.run!
   puts runner.report
+  if report_email_address
+    IO.popen('echo ' + report_email_address, 'w') do |mail|
+      mail.write runner.report
+    end
+  end
 end
