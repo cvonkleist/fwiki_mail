@@ -137,7 +137,7 @@ if $0 == __FILE__
   puts runner.report
   if report_email_address
     IO.popen('mail ' + report_email_address, 'w') do |mail|
-      mail.write runner.report
+      mail.puts runner.report
     end
   end
 end
