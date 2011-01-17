@@ -177,9 +177,8 @@ if $0 == __FILE__
 
   puts runner.report
 
-  if report_email_address
-    IO.popen('mail ' + report_email_address, 'w') do |mail|
-      mail.puts runner.report
-    end
+  report_email_address ||= email[%r(([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}))i, 1]
+  IO.popen('mail "%s"' % report_email_address, 'w') do |mail|
+    mail.puts runner.report
   end
 end
